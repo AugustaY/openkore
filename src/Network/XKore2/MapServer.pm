@@ -29,7 +29,7 @@ use Network::MessageTokenizer;
 use I18N qw(stringToBytes);
 use Utils qw(shiftPack getTickCount getCoordString);
 
-use Log qw(debug warning error);
+use Log qw(debug warning message error);
 
 my $RunOnce = 1;
 	
@@ -180,20 +180,19 @@ sub map_loaded {
 	$char->{ID} = $client->{session}{accountID};
 	$self->send_player_info($client, $char);
 	$self->send_avoid_sprite_error_hack($client, $char);
-	$self->send_npc_info($client);
-	$self->send_inventory($client, $char);
+	#$self->send_npc_info($client);
+	#$self->send_inventory($client, $char);
 	$self->send_ground_items($client);
-	$self->send_portals($client);
-	$self->send_npcs($client);
+	#$self->send_portals($client);
+	#$self->send_npcs($client);
 	$self->send_monsters($client);
-	$self->send_npcs($client);
-	$self->send_pets($client);
+	#$self->send_pets($client);
 	$self->send_vendors($client);
-	$self->send_chatrooms($client);
-	$self->send_ground_skills($client);
-	$self->send_friends_list($client);
-	$self->send_party_list($client, $char);
-	$self->send_pet($client);
+	# $self->send_chatrooms($client);
+	# $self->send_ground_skills($client);
+	# $self->send_friends_list($client);
+	# $self->send_party_list($client, $char);
+	# $self->send_pet($client);
 	$self->send_welcome($client);
 	
 	$args->{mangle} = 2;
@@ -282,9 +281,13 @@ sub send_vendors {
 	my $data = undef;
 	foreach my $ID (@venderListsID) {
 		next if !defined($ID) || !$venderLists{$ID};
-		$data .= pack('C2 a4 a30 x50', 0x31, 0x01, $ID, stringToBytes($venderLists{$ID}{title}));
+		$data = $self->{recvPacketParser}->reconstruct({
+				switch => 'vender_found',
+				ID => $ID,
+				title => stringToBytes($venderLists{$ID}{title}),
+			});
+		$client->send($data) if (length($data) > 0);
 	}
-	$client->send($data) if (length($data) > 0);
 }
 
 sub send_chatrooms {
@@ -293,13 +296,17 @@ sub send_chatrooms {
 	foreach my $ID (@chatRoomsID) {
 		next if !defined($ID) || !$chatRooms{$ID} || !$chatRooms{$ID}{ownerID};
 		# '00D7' => ['chat_info', 'x2 a4 a4 v1 v1 C1 a*', [qw(ownerID ID limit num_users public title)]],
-		my $chatMsg = pack('a4 a4 v2 C1 a* x1',
-			$chatRooms{$ID}{ownerID}, $ID, $chatRooms{$ID}{limit},
-			$chatRooms{$ID}{num_users}, $chatRooms{$ID}{public},
-			stringToBytes($chatRooms{$ID}{title}));
-		$data .= pack('C2 v', 0xD7, 0x00, length($chatMsg) + 4) . $chatMsg;
+		$data = $self->{recvPacketParser}->reconstruct({
+				switch => 'chat_info',
+				ownerID => $chatRooms{$ID}{ownerID},
+				ID => $ID,
+				limit => $chatRooms{$ID}{limit},
+				num_users => $chatRooms{$ID}{num_users},
+				public => $chatRooms{$ID}{public},
+				title => stringToBytes($chatRooms{$ID}{title}),
+			});
+		$client->send($data) if (length($data) > 0);		
 	}
-	$client->send($data) if (length($data) > 0);
 }
 
 sub send_ground_skills {
@@ -314,6 +321,7 @@ sub send_ground_skills {
 	}
 	$client->send($data) if (length($data) > 0);
 }
+
 sub send_friends_list {
 	my ($self, $client) = @_;
 	my $data = undef;
@@ -337,7 +345,8 @@ sub send_friends_list {
 	$client->send($friendOnlineMsg);
 	undef $friendMsg;
 	undef $friendOnlineMsg;
-}	
+}
+
 sub send_pets {
 	my ($self, $client) = @_;
 	my $data = undef;
@@ -364,14 +373,15 @@ sub send_monsters {
 		shiftPack(\$coords, $monster->{pos_to}{x}, 10);
 		shiftPack(\$coords, $monster->{pos_to}{y}, 10);
 		shiftPack(\$coords, $monster->{look}{body}, 4);
-		$data .= $self->{recvPacketParser}->reconstruct({
+		$data = $self->{recvPacketParser}->reconstruct({
 			switch => 'actor_exists',
 			walk_speed => $monster->{walk_speed} * 1000,
 			coords => $coords,
 			map { $_ => $monster->{$_} } qw(object_type ID opt1 opt2 option type lv)
 		});
+		$client->send($data) if (length($data) > 0);
 	}
-	$client->send($data) if (length($data) > 0);
+	
 }
 
 sub send_npcs {
@@ -382,13 +392,14 @@ sub send_npcs {
 		shiftPack(\$coords, $npc->{pos}{x}, 10);
 		shiftPack(\$coords, $npc->{pos}{y}, 10);
 		shiftPack(\$coords, $npc->{look}{body}, 4);
-		$data .= $self->{recvPacketParser}->reconstruct({
+		$data = $self->{recvPacketParser}->reconstruct({
 			switch => 'actor_exists',
 			coords => $coords,
 			map { $_ => $npc->{$_} } qw(object_type ID opt1 opt2 option type)
 		});
+		$client->send($data) if (length($data) > 0);
 	}
-	$client->send($data) if (length($data) > 0);
+	
 }
 
 sub send_portals {
@@ -414,13 +425,43 @@ sub send_ground_items {
 	my ($self, $client) = @_;
 	# Send info about items on the ground
 	my $data = undef;
-	foreach my $ID (@itemsID) {
-		next if !defined($ID) || !$items{$ID};
-		$data .= pack('C2 a4 v x v3 x2', 0x9D, 0x00,
-			$ID, $items{$ID}{nameID},
-			$items{$ID}{pos}{x}, $items{$ID}{pos}{y}, $items{$ID}{amount});
+	$data = undef;
+	if(exists $self->{recvPacketParser}{packet_lut}{item_exists} && grep { $self->{recvPacketParser}{packet_lut}{item_exists} eq $_ } qw( 0ADD )) {
+		foreach my $ID (@itemsID) {
+			next if !defined($ID) || !$items{$ID};
+			$data = $self->{recvPacketParser}->reconstruct({
+					switch => 'item_exists',
+					ID => $ID,
+					nameID => $items{$ID}{nameID},
+					type => 0,
+					identified => $items{$ID}{identified},
+					x => $items{$ID}{pos}{x},
+					y => $items{$ID}{pos}{x},
+					subx => 0,
+					suby => 0,
+					amount => $items{$ID}{amount},
+					show_effect => 0,
+					effect_type => 0,
+				});
+			$client->send($data) if (length($data) > 0);
+		}
+	} else {
+		foreach my $ID (@itemsID) {
+			next if !defined($ID) || !$items{$ID};
+			$data = $self->{recvPacketParser}->reconstruct({
+					switch => 'item_exists',
+					ID => $ID,
+					nameID => $items{$ID}{nameID},
+					identified => $items{$ID}{identified},
+					x => $items{$ID}{pos}{x},
+					y => $items{$ID}{pos}{x},
+					subx => 0,
+					suby => 0,
+					amount => $items{$ID}{amount},
+				});
+			$client->send($data) if (length($data) > 0);
+		}
 	}
-	$client->send($data) if (length($data) > 0);
 }
 
 sub send_sit {
@@ -452,92 +493,9 @@ sub send_welcome {
 
 sub send_player_info {
 	my ($self, $client, $char) = @_;
+
+	# Send skill information. packet 010F
 	my $data = undef;
-	
-	# Player stats.
-	$data = pack('C2 v1 C12 v12 x4',
-		0xBD, 0x00,
-		$char->{points_free},
-
-		$char->{str}, $char->{points_str}, $char->{agi}, $char->{points_agi},
-		$char->{vit}, $char->{points_vit}, $char->{int}, $char->{points_int}, $char->{dex},
-		$char->{points_dex}, $char->{luk}, $char->{points_luk},
-
-		$char->{attack}, $char->{attack_bonus},
-		$char->{attack_magic_min}, $char->{attack_magic_max},
-		$char->{def}, $char->{def_bonus},
-		$char->{def_magic}, $char->{def_magic_bonus},
-		$char->{hit},
-		$char->{flee},
-		$char->{flee_bonus}, $char->{critical}
-	);
-	$client->send($data);
-
-	# More stats
-	$data  = pack('C2 v V', 0xB0, 0x00, 0, $char->{walk_speed} * 1000);		# Walk speed
-	$data .= pack('C2 v V', 0xB0, 0x00, 5, $char->{hp});				# Current HP
-	$data .= pack('C2 v V', 0xB0, 0x00, 6, $char->{hp_max});			# Max HP
-	$data .= pack('C2 v V', 0xB0, 0x00, 7, $char->{sp});				# Current SP
-	$data .= pack('C2 v V', 0xB0, 0x00, 8, $char->{sp_max});			# Max SP
-	$data .= pack('C2 v V', 0xB0, 0x00, 12, $char->{points_skill});		# Skill points left
-	$data .= pack('C2 v V', 0xB0, 0x00, 24, $char->{weight} * 10);		# Current weight
-	$data .= pack('C2 v V', 0xB0, 0x00, 25, $char->{weight_max} * 10);		# Max weight
-	$data .= pack('C2 v V', 0xB0, 0x00, 53, $char->{attack_delay});		# Attack speed
-	$client->send($data);
-
-	# Base stat info (str, agi, vit, int, dex, luk) this time with bonus
-	$data  = pack('C2 V3', 0x41, 0x01, 13, $char->{str}, $char->{str_bonus});
-	$data .= pack('C2 V3', 0x41, 0x01, 14, $char->{agi}, $char->{agi_bonus});
-	$data .= pack('C2 V3', 0x41, 0x01, 15, $char->{vit}, $char->{vit_bonus});
-	$data .= pack('C2 V3', 0x41, 0x01, 16, $char->{int}, $char->{int_bonus});
-	$data .= pack('C2 V3', 0x41, 0x01, 17, $char->{dex}, $char->{dex_bonus});
-	$data .= pack('C2 V3', 0x41, 0x01, 18, $char->{luk}, $char->{luk_bonus});
-	$client->send($data);
-
-	# # Make the character face the correct direction
-	$client->send(pack('C2 a4 C1 x1 C1', 0x9C, 0x00,
-		$char->{ID}, $char->{look}{head}, $char->{look}{body})
-	);
-
-	# Send attack range
-	$data  = pack('C2 v', 0x3A, 0x01, $char->{attack_range});
-	# Send weapon/shield appearance
-	$data .= pack('C2 a4 C v2', 0xD7, 0x01, $char->{ID}, 2, $char->{weapon}, $char->{shield});
-	# Send status info
-	$data .= pack('v a4 v3 x', 0x119, $char->{ID}, $char->{opt1}, $char->{opt2}, $char->{option});
-	$client->send($data);
-	
-	if ($RunOnce) {
-		foreach my $ID (keys %{$char->{statuses}}) {
-			while (my ($statusID, $statusName) = each %statusHandle) {
-				if ($ID eq $statusName) {
-#					$data .= pack('C2 v a4 C', 0x96, 0x01, $statusID, $char->{ID}, 1);
-					if ($statusID == 673) {
-						# for Cart active
-						$data .= pack('C2 v a4 C V4', 0x3F, 0x04, $statusID, $char->{ID}, 1, 9999, $char->cart->type, 0, 0);
-					} elsif ($statusID == 622) {
-						# sit
-						$data .= pack('C2 v a4 C V4', 0x3F, 0x04, $statusID, $char->{ID}, 1, 9999, 1, 0, 0);
-						$self->send_sit($client);
-					} else {
-						$data .= pack('C2 v a4 C', 0x96, 0x01, $statusID, $char->{ID}, 1);
-					}
-				}
-			}
-		}
-	}
-	
-	$client->send($data) if (length($data) > 0);
-	
-	# Send spirit sphere information
-	$data  = pack('C2 a4 v', 0xD0, 0x01, $char->{ID}, $char->{spirits}) if ($char->{spirits});
-	# Send exp-required-to-level-up info
-	$data .= pack('C2 v V', 0xB1, 0x00, 22, $char->{exp_max});
-	$data .= pack('C2 v V', 0xB1, 0x00, 23, $char->{exp_job_max});
-	$client->send($data);
-	
-	# Send skill information
-	$data = undef;
 	foreach my $ID (@skillsID) {
 		$data .= pack('v2 x2 v3 a24 C',
 			$char->{skills}{$ID}{ID}, $char->{skills}{$ID}{targetType},
@@ -546,58 +504,412 @@ sub send_player_info {
 	}
 	$data = pack('C2 v', 0x0F, 0x01, length($data) + 4) . $data;
 	$client->send($data);
-	
-	# Send Hotkeys
+
+	# Send weapon/shield appearance. packet 01D7
+	$data = undef;
+	my %player_equipment = (
+		2 => $char->{weapon},
+		3 => $char->{headgear}{low},
+		4 => $char->{headgear}{top},
+		5 => $char->{headgear}{mid},		
+	);
+
+	while (my ($type, $value) = each %player_equipment) {
+		my $id2 = 0;
+		$id2 =  $char->{shield} if($type == 2);
+		$data = $self->{recvPacketParser}->reconstruct({
+			switch => 'player_equipment',
+			sourceID => $char->{ID},
+			type => $type,
+			ID1 => $value,
+			ID2 => $id2,
+		});
+		$client->send($data);
+	}
+
+	# Send attack range. packet 013A
+	$data = undef;
+	$data = $self->{recvPacketParser}->reconstruct({
+		switch => 'attack_range',
+		type => $char->{attack_range},
+	});
+
+	# More stats. packet 00B0
+	$data = undef;
+	my %stats_info = (
+		0 => $char->{walk_speed} * 1000,		# Walk speed
+		5 => $char->{hp},						# Current HP
+		6 => $char->{hp_max},					# Max HP
+		7 => $char->{sp},						# Current SP
+		8 => $char->{sp_max},					# Max SP
+		12 => $char->{points_skill},			# Skill points left
+		24 => $char->{weight} * 10, 			# Current weight
+		25 => $char->{weight_max} * 10, 		# Max weight
+		41 => $char->{attack}, 					# Attack		
+		42 => $char->{attack_bonus}, 			# Attack Bonus
+		43 => $char->{attack_magic_min}, 		# Magic Attack
+		44 => $char->{attack_magic_max}, 		# Magic Attack Bonus
+		45 => $char->{def}, 					# Defense
+		46 => $char->{def_bonus}, 				# Defense Bonus
+		47 => $char->{def_magic}, 				# Magic Defense
+		48 => $char->{def_magic_bonus}, 		# Magic Defense Bonus
+		49 => $char->{hit}, 					# Hit
+		50 => $char->{flee}, 					# Flee
+		51 => $char->{flee_bonus}, 				# Flee Bonus
+		52 => $char->{critical}, 				# Critical
+		53 => $char->{attack_delay} 			# Attack speed
+	);
+
+	while (my ($stat, $value) = each %stats_info) {		
+		$data = $self->{recvPacketParser}->reconstruct({
+			switch => '00B0',
+			type => $stat,
+			val => $value,
+		});
+		$client->send($data);
+	}
+
+	# Player stats. 00BD
+	$data = undef;
+	$data = $self->{recvPacketParser}->reconstruct({
+		switch => '00BD',
+		points_free => $char->{points_free},
+		str => $char->{str},
+		points_str => $char->{points_str},
+		agi => $char->{agi},
+		points_agi => $char->{points_agi},
+		vit => $char->{vit},
+		points_vit => $char->{points_vit},
+		int => $char->{int},
+		points_int => $char->{points_int},
+		dex => $char->{dex},
+		points_dex => $char->{points_dex},
+		luk => $char->{luk},
+		points_luk => $char->{points_luk},
+		attack => $char->{attack},
+		attack_bonus => $char->{attack_bonus},
+		attack_magic_min => $char->{attack_magic_min},
+		attack_magic_max => $char->{attack_magic_max},
+		def => $char->{def},
+		def_bonus => $char->{def_bonus},
+		def_magic => $char->{def_magic},
+		def_magic_bonus => $char->{def_magic_bonus},
+		hit => $char->{hit},
+		flee => $char->{flee},
+		flee_bonus => $char->{flee_bonus},
+		critical => $char->{critical},
+		stance => 1,
+		manner => 0,
+	});
+	$client->send($data);
+
+	# Base stat info (str, agi, vit, int, dex, luk) this time with bonus. packet 0141
+	$data = undef;
+	my %stats = (		
+		13 => "str",
+		14 => "agi",
+		15 => "vit",
+		16 => "int",
+		17 => "dex",
+		18 => "luk",
+	);
+
+	while (my ($stat, $value) = each %stats) {
+		$data = $self->{recvPacketParser}->reconstruct({
+			switch => 'stat_info2',
+			type => $stat,
+			val => $char->{$value},
+			val2 => $char->{$value."_bonus"},
+		});
+		$client->send($data);
+	}
+
+	# Make the character face the correct direction. packet 009C
+	$data = undef;
+	$data = $self->{recvPacketParser}->reconstruct({
+		switch => 'actor_look_at',
+		ID => $char->{ID},
+		head => $char->{look}{head},
+		body => $char->{look}{body},
+	});
+	$client->send($data);
+
+	# Send Hotkeys. packet 02B9 07D9 0A00
+	$data = undef;
 	if ($hotkeyList) {
 		$data = undef;
-		if(@{$hotkeyList} <= 28) { # todo: there is also 07D9,254
-			$data .=  pack('v', 0x02B9); # old interface (28 hotkeys)
+		my $switch;
+		my $rotate;
+
+		if(exists $self->{recvPacketParser}{packet_lut}{hotkeys}) {
+			$switch = $self->{recvPacketParser}{packet_lut}{hotkeys};
 		} else {
-			$data .=  pack('v', 0x07D9); # renewal interface as of: RagexeRE_2009_06_10a (38 hotkeys)
+			if(@{$hotkeyList} <= 28) { # todo: there is also 07D9,254
+				$switch = "02B9"; # old interface (28 hotkeys)
+			} else {
+				$switch = "07D9";  # renewal interface as of: RagexeRE_2009_06_10a (38 hotkeys)
+			}
 		}
+
+		$data =  pack('v', hex $switch);
+		$data .=  pack('C', "0") if ($switch eq "0A00");
 		for (my $i = 0; $i < @{$hotkeyList}; $i++) {
 			$data .= pack('C V v', $hotkeyList->[$i]->{type}, $hotkeyList->[$i]->{ID}, $hotkeyList->[$i]->{lv});
 		}
+
 		$client->send($data) if (@{$hotkeyList});
 	}
-	
-	# Send info about items on the ground
+
+	# Send status info. packet 0119 028A 0229
 	$data = undef;
-	foreach my $ID (@itemsID) {
-		next if !defined($ID) || !$items{$ID};
-		$data .= pack('C2 a4 v x v3 x2', 0x9D, 0x00,
-			$ID, $items{$ID}{nameID},
-			$items{$ID}{pos}{x}, $items{$ID}{pos}{y}, $items{$ID}{amount});
+	if(exists $self->{recvPacketParser}{packet_lut}{character_status}) {
+		if($self->{recvPacketParser}{packet_lut}{character_status} eq "0229") { 
+			$data = $self->{recvPacketParser}->reconstruct({
+				switch => 'character_status',
+				ID => $char->{ID},
+				opt1 => $char->{opt1},
+				opt2 => $char->{opt2},
+				option => $char->{option},
+				stance => $char->{stance}
+			});
+		} elsif($self->{recvPacketParser}{packet_lut}{character_status} eq "028A") { 
+			$data = $self->{recvPacketParser}->reconstruct({
+				switch => 'character_status',
+				ID => $char->{ID},
+				lv => 1,
+				opt3 => $char->{opt3},
+				option => $char->{option},				
+			});
+		} elsif($self->{recvPacketParser}{packet_lut}{character_status} eq "0119") {
+			$data = $self->{recvPacketParser}->reconstruct({
+				switch => 'character_status',
+				ID => $char->{ID},
+				opt1 => $char->{opt1},
+				opt2 => $char->{opt2},
+				option => $char->{option},
+				stance => 0,
+			});
+		}
+	} else {
+		$data = pack('v a4 v3 x', 0x119, $char->{ID}, $char->{opt1}, $char->{opt2}, $char->{option});
 	}
-	$client->send($data) if (length($data) > 0);
+	$client->send($data);
 	
-	
-	# # Send info about surrounding players
-	foreach my $player (@{$playersList->getItems()}) {
-		my $coords = '';
-		shiftPack(\$coords, $player->{pos_to}{x}, 10);
-		shiftPack(\$coords, $player->{pos_to}{y}, 10);
-		shiftPack(\$coords, $player->{look}{body}, 4);
-		$data .= pack('C2 a4 v4 x2 v8 x2 v a4 a4 v x2 C2 a3 x2 C v',
-			0x2A, 0x02, $player->{ID}, $player->{walk_speed} * 1000,
-			$player->{opt1}, $player->{opt2}, $player->{option},
-			$player->{jobID}, $player->{hair_style}, $player->{weapon}, $player->{shield},
-			$player->{headgear}{low}, $player->{headgear}{top}, $player->{headgear}{mid},
-			$player->{hair_color}, $player->{look}{head}, $player->{guildID}, $player->{emblemID},
-			$player->{opt3}, $player->{stance}, $player->{sex}, $coords,
-			($player->{dead}? 1 : ($player->{sitting}? 2 : 0)), $player->{lv});
+	# send status active. packets 0196 043F 08FF 0983 0984
+	$data = undef;
+	if ($RunOnce) {
+		foreach my $ID (keys %{$char->{statuses}}) {
+			while (my ($statusID, $statusName) = each %statusHandle) {
+				if ($ID eq $statusName) {
+#					$data .= pack('C2 v a4 C', 0x96, 0x01, $statusID, $char->{ID}, 1);
+					if ($statusID == 673) {
+						# for Cart active
+						$data = $self->{recvPacketParser}->reconstruct({
+							switch => '043F',
+							type => $statusID,
+							ID => $char->{ID},
+							flag => 1,
+							total => 0,
+							tick => 9999,
+							unknown1 => $char->cart->type,
+							unknown2 => 0,
+							unknown3 => 0,
+						});						
+					} elsif ($statusID == 622) {
+						# sit
+						$data = $self->{recvPacketParser}->reconstruct({
+							switch => '043F',
+							type => $statusID,
+							ID => $char->{ID},
+							flag => 1,
+							total => 0,
+							tick => 9999,
+							unknown1 =>1,
+							unknown2 => 0,
+							unknown3 => 0,
+						});
+						$self->send_sit($client);
+					} else {
+						if(exists $self->{recvPacketParser}{packet_lut}{actor_status_active}) {
+							$data = $self->{recvPacketParser}->reconstruct({
+									switch => 'actor_status_active',
+									type => $statusID,
+									ID => $char->{ID},
+									flag => 1,
+									total => 0,
+									tick => 9999,
+									unknown1 =>1,
+									unknown2 => 0,
+									unknown3 => 0,
+								});
+						} else {
+							$data .= pack('C2 v a4 C', 0x96, 0x01, $statusID, $char->{ID}, 1);
+						}
+					}
+					$client->send($data) if (length($data) > 0);
+				}
+			}
+		}
 	}
-	$client->send($data) if (length($data) > 0);
+	
+	# Send spirit sphere information. packets 01D0 01E1 08CF
+	# 01D0 (spirits), 01E1 (coins), 08CF (amulets)
+	$data = undef;
+	if ($char->{spirits}) {
+		my $switch = "01D0";
+		if($char->{spiritsType} eq "coin") { $switch = "01E1"; }
+		if($char->{spiritsType} eq "amulet") { $switch = "08CF"; }
+		
+		my $type = 0;
+		if(exists $char->{amuletType}) { $type = $char->{amuletType}; }
+
+		$data = $self->{recvPacketParser}->reconstruct({
+					switch => $switch,
+					sourceID => $char->{ID},
+					entity => $char->{spirits},
+					type => $type,
+				}) ;
+		$client->send($data);
+	}
+
+	# Send exp-required-to-level-up info
+	$data = undef;
+	$data = $self->{recvPacketParser}->reconstruct({
+				switch => '00B1',
+				type => 22,
+				val => $char->{exp_max},				
+			});
+	$client->send($data);
+
+	$data = undef;
+	$data = $self->{recvPacketParser}->reconstruct({
+				switch => '00B1',
+				type => 23,
+				val => $char->{exp_job_max},				
+			});
+	$client->send($data);	
+
+	# Send info about items on the ground. packets 009D 0ADD
+	$data = undef;
+	if(exists $self->{recvPacketParser}{packet_lut}{item_exists} && grep { $self->{recvPacketParser}{packet_lut}{item_exists} eq $_ } qw( 0ADD )) {
+		foreach my $ID (@itemsID) {
+			next if !defined($ID) || !$items{$ID};
+			$data = $self->{recvPacketParser}->reconstruct({
+					switch => 'item_exists',
+					ID => $ID,
+					nameID => $items{$ID}{nameID},
+					type => 0,
+					identified => $items{$ID}{identified},
+					x => $items{$ID}{pos}{x},
+					y => $items{$ID}{pos}{x},
+					subx => 0,
+					suby => 0,
+					amount => $items{$ID}{amount},
+					show_effect => 0,
+					effect_type => 0,
+				});
+			$client->send($data) if (length($data) > 0);
+		}
+	} else {
+		foreach my $ID (@itemsID) {
+			next if !defined($ID) || !$items{$ID};
+			$data = $self->{recvPacketParser}->reconstruct({
+					switch => 'item_exists',
+					ID => $ID,
+					nameID => $items{$ID}{nameID},
+					identified => $items{$ID}{identified},
+					x => $items{$ID}{pos}{x},
+					y => $items{$ID}{pos}{x},
+					subx => 0,
+					suby => 0,
+					amount => $items{$ID}{amount},
+				});
+			$client->send($data) if (length($data) > 0);
+		}
+	}	
+
+	# Send info about surrounding players. packets 022A .. 09FF
+	$data = undef;
+	if(exists $self->{recvPacketParser}{packet_lut}{actor_exists} && grep { $self->{recvPacketParser}{packet_lut}{actor_exists} eq $_ } qw( 09FF )) {		
+		foreach my $player (@{$playersList->getItems()}) {
+			my $coords = '';
+			shiftPack(\$coords, $player->{pos_to}{x}, 10);
+			shiftPack(\$coords, $player->{pos_to}{y}, 10);
+			shiftPack(\$coords, $player->{look}{body}, 4);
+			$data = $self->{recvPacketParser}->reconstruct({
+						switch => 'actor_exists',
+						len => 1,
+						object_type => 0,
+						ID => $player->{jobID},
+						charID  => $player->{ID},
+						walk_speed  $player->{walk_speed} * 1000,
+						opt1 => $player->{opt1},
+						opt2 => $player->{opt2},
+						option => $player->{option},
+						type => 1,
+						hair_style => $player->{hair_style},
+						weapon => $player->{weapon},
+						shield => $player->{shield},
+						lowhead => $player->{headgear}{low},
+						tophead => $player->{headgear}{top},
+						midhead => $player->{headgear}{mid},
+						hair_color => $player->{hair_color},
+						clothes_color => 0,
+						head_dir => $player->{look}{head},
+						costume => 0,
+						guildID => $player->{guildID},
+						emblemID => $player->{emblemID},
+						manner => 0,
+						opt3 => $player->{opt3},
+						stance => 0,
+						sex => $player->{sex},
+						coords => $coords,
+						xSize => 1,
+						ySize => 1,
+						act => 1,
+						lv => 1,
+						font => 0,
+						opt4 => 0,
+						name => $player->{name},
+					});
+			$client->send($data) if (length($data) > 0);
+		}
+	} else {
+		foreach my $player (@{$playersList->getItems()}) {
+			my $coords = '';
+			shiftPack(\$coords, $player->{pos_to}{x}, 10);
+			shiftPack(\$coords, $player->{pos_to}{y}, 10);
+			shiftPack(\$coords, $player->{look}{body}, 4);
+			$data = pack('C2 a4 v4 x2 v8 x2 v a4 a4 v x2 C2 a3 x2 C v',
+					0x2A, 0x02, $player->{ID}, $player->{walk_speed} * 1000,
+					$player->{opt1}, $player->{opt2}, $player->{option},
+					$player->{jobID}, $player->{hair_style}, $player->{weapon}, $player->{shield},
+					$player->{headgear}{low}, $player->{headgear}{top}, $player->{headgear}{mid},
+					$player->{hair_color}, $player->{look}{head}, $player->{guildID}, $player->{emblemID},
+					$player->{opt3}, $player->{stance}, $player->{sex}, $coords,
+					($player->{dead}? 1 : ($player->{sitting}? 2 : 0)), $player->{lv});
+			$client->send($data) if (length($data) > 0);
+		}
+	}
+	
 }
 
 sub send_inventory {
 	my ($self, $client, $char) = @_;
 	my $data = undef;
-	# Send cart information includeing the items
+	# Send cart information including the items. packet 0121
 	if (!$client->{session}{dummy} && $char->cartActive && $RunOnce) {
-		$data = pack('C2 v2 V2', 0x21, 0x01, $char->cart->items, $char->cart->items_max, ($char->cart->{weight} * 10), ($char->cart->{weight_max} * 10));
+		$data = $self->{recvPacketParser}->reconstruct({
+						switch => 'cart_info',
+						items => $char->cart->items,
+						items_max => $char->cart->items_max,
+						weight => ($char->cart->{weight} * 10),
+						weight_max  => ($char->cart->{weight_max} * 10),
+					});
+	
 		$client->send($data);
 		
+		my $data = undef;
 		my @stackable;
 		my @nonstackable;
 		my $n = 0;
@@ -611,7 +923,7 @@ sub send_inventory {
 			}
 		}
 		
-		# Send stackable item information
+		# Send stackable item information. packets 0123, 01EF, 02E9, 0902, 0993
 		$data = undef;
 		$n = 0;
 		foreach my $item (@stackable) {
@@ -654,8 +966,9 @@ sub send_inventory {
 		$client->send($data) if ($n > 0);
 	}
 
-		# Sort items into stackable and non-stackable
+	# Sort items into stackable and non-stackable
 	if (UNIVERSAL::isa($char, 'Actor::You')) {
+		my $data = undef;
 		my @stackable;
 		my @nonstackable;
 		foreach my $item (@{$char->inventory->getItems()}) {
@@ -700,27 +1013,26 @@ sub send_npc_info {
 	my ($self, $client) = @_;
 	my $data = undef;
 	my $switch = ($masterServer->{serverType} eq 'bRO')?'0857':'actor_exists';
-	
+
 	foreach my $npc (@{$npcsList->getItems()}) {
 		my $coords = '';
 		shiftPack(\$coords, $npc->{pos}{x}, 10);
 		shiftPack(\$coords, $npc->{pos}{y}, 10);
 		shiftPack(\$coords, $npc->{look}{body}, 4);
-		$data .= $self->{recvPacketParser}->reconstruct({
+		$data = $self->{recvPacketParser}->reconstruct({
 			switch => $switch,
 			coords => $coords,
-			map { $_ => $npc->{$_} } qw(object_type ID opt1 opt2 option type)
+			map { $_ => $npc->{$_} } qw(object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
 		});
+		$client->send($data) if (length($data) > 0);
 	}
-	$client->send($data) if (length($data) > 0);
+	
 }
 
 sub send_avoid_sprite_error_hack {
 	my ($self, $client, $char) = @_;
-	my $data = pack('C15', 0x29, 0x02, 0xA7, 0x94, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40);
-	$client->send($data);
-	$data = $self->{recvPacketParser}->reconstruct({
-		switch => '0229',
+	my $data = $self->{recvPacketParser}->reconstruct({
+		switch => 'character_status',
 		ID => $char->{ID},
 		opt1 => $char->{opt1},
 		opt2 => $char->{opt2},
@@ -764,6 +1076,10 @@ sub map_login {
 		} else {
 			# BUGGY $client->send($args->{accountID});
 		}
+		
+		if(grep { $masterServer->{serverType} =~ /^$_/ } qw( Zero )) {		
+			$self->send_flag($client, 1);
+		}
 
 		my $charInfo = $self->getCharInfo($session);
 		my $coords = '';
@@ -805,7 +1121,7 @@ sub sync {
 			# time => getTickCount
 		# });
 	#$client->send($data);
-	$args->{mangle} = 2;
+	#$args->{mangle} = 2;
 }
 
 sub request_cashitems {
@@ -860,5 +1176,21 @@ sub guild_info_request {
 	$args->{mangle} = 2;
 }
 
-1;
+sub send_flag {
+	my ($self, $client, $flag) = @_;
+	my $data;
+	if($flag eq 1) {
+		$data = 
+		$data = $self->{recvPacketParser}->reconstruct({
+			switch => '0ADE',			
+			unknown => unpack("V","46000000"),
+		});
+	}
+	$client->send($data) if (length($data) > 0);
+}
 
+sub flag {
+	my ($self, $args, $client) = @_;
+	$args->{mangle} = 2;
+}
+1;
