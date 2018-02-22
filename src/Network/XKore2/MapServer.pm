@@ -930,9 +930,8 @@ sub send_inventory {
 		if(exists $self->{recvPacketParser}{packet_lut}{cart_items_stackable}) {
 			$unpack = $packetParser->items_stackable({ switch => $self->{recvPacketParser}{packet_lut}{cart_items_stackable} });
 			foreach my $item (@stackable) {
-				$data .= $self->{recvPacketParser}->reconstruct({
-					switch => $self->{recvPacketParser}{packet_lut}{cart_items_stackable},
-					map { $_ => $item->{$_} } qw($unpack->{types})
+				$data .= pack($unpack->{types},
+						map { $_ => $item->{$_} } qw($unpack->{keys});
 				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{cart_items_stackable}) .
@@ -960,9 +959,8 @@ sub send_inventory {
 		if(exists $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable}) {
 			$unpack = $packetParser->items_nonstackable({ switch => $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable} });
 			foreach my $item (@nonstackable) {
-				$data .= $self->{recvPacketParser}->reconstruct({
-					switch => $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable},
-					map { $_ => $item->{$_} } qw($unpack->{types})
+				$data .= pack($unpack->{types},
+						map { $_ => $item->{$_} } qw($unpack->{keys});
 				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable}) .
@@ -1006,9 +1004,8 @@ sub send_inventory {
 		if(exists $self->{recvPacketParser}{packet_lut}{inventory_items_stackable}) {
 			$unpack = $packetParser->items_stackable({ switch => $self->{recvPacketParser}{packet_lut}{inventory_items_stackable} });
 			foreach my $item (@stackable) {
-				$data .= $self->{recvPacketParser}->reconstruct({
-					switch => $self->{recvPacketParser}{packet_lut}{inventory_items_stackable},
-					map { $_ => $item->{$_} } qw($unpack->{types})
+				$data .= pack($unpack->{types},
+						map { $_ => $item->{$_} } qw($unpack->{keys});
 				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{inventory_items_stackable}) .
@@ -1033,9 +1030,8 @@ sub send_inventory {
 		if(exists $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable}) {
 			$unpack = $packetParser->items_nonstackable({ switch => $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable} });
 			foreach my $item (@nonstackable) {
-				$data .= $self->{recvPacketParser}->reconstruct({
-					switch => $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable},
-					map { $_ => $item->{$_} } qw($unpack->{types})
+				$data .= pack($unpack->{types},
+						map { $_ => $item->{$_} } qw($unpack->{keys});
 				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable}).
