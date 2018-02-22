@@ -26,7 +26,7 @@ addTableFolders bRO
 charBlockSize 144
 pinCode 1
 charDeleteDateType 1
-sendCryptKeys 0x1D4F1D02, 0x530C3688, 0x25704043
+sendCryptKeys 0x51086501, 0x08E658A0, 0x20B73C00
 
 [Brazil - bRO: Thor]
 ip 200.229.50.3
@@ -45,7 +45,7 @@ addTableFolders bRO
 charBlockSize 144
 pinCode 1
 charDeleteDateType 1
-sendCryptKeys 0x1D4F1D02, 0x530C3688, 0x25704043
+sendCryptKeys 0x51086501, 0x08E658A0, 0x20B73C00
 
 ## http://euro-ro.net/
 [Europe - euRO]
@@ -142,7 +142,7 @@ charBlockSize 145
 pauseCharLogin 1
 patchserver ropatch1.gravityus.com
 patchpath /repatch
-sendCryptKeys 0x3E6F68AB, 0x7006524F, 0x1FE06F92
+sendCryptKeys 0x6677138E, 0x1D943D2D, 0x005E3E51
 
 
 
@@ -176,7 +176,7 @@ pinCode 1
 storageEncryptKey 0x050B6F79, 0x0202C179, 0x0E20120, 0x04FA43E3, 0x0179B6C8, 0x05973DF2, 0x07D8D6B, 0x08CB9ED9
 OTT_ip 112.175.128.135
 OTT_port 6900
-sendCryptKeys 0x0513075E, 0x67C56C6F, 0x347075AF
+sendCryptKeys 0x28ED7635, 0x59383498, 0x76591F21
 
 [Korea - kRO: Sara/Rangidis/Thanatos]
 ip 112.175.128.137
