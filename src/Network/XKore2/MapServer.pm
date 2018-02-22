@@ -20,7 +20,7 @@ use Globals qw(
 	$portalsList $npcsList $monstersList $playersList $petsList
 	@friendsID %friends %pet @partyUsersID %spells
 	@chatRoomsID %chatRooms @venderListsID %venderLists $hotkeyList
-	%config $questList $incomingMessages $masterServer $messageSender
+	%config $questList $incomingMessages $masterServer $messageSender $packetParser
 	%cashShop
 );
 use Base::Ragnarok::MapServer;
@@ -928,7 +928,7 @@ sub send_inventory {
 		$data = undef;
 		my $unpack;
 		if(exists $self->{recvPacketParser}{packet_lut}{cart_items_stackable}) {
-			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{cart_items_stackable});
+			$unpack = $packetParser->items_stackable($self->{recvPacketParser}{packet_lut}{cart_items_stackable});
 			foreach my $item (@stackable) {
 				$data .= $self->{recvPacketParser}->reconstruct({
 					switch => $self->{recvPacketParser}{packet_lut}{cart_items_stackable},
@@ -958,7 +958,7 @@ sub send_inventory {
 		$data = undef;
 		$unpack = undef;
 		if(exists $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable}) {
-			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{cart_items_nonstackable});
+			$unpack = $packetParser->items_nonstackable($self->{recvPacketParser}{packet_lut}{cart_items_nonstackable});
 			foreach my $item (@nonstackable) {
 				$data .= $self->{recvPacketParser}->reconstruct({
 					switch => $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable},
@@ -1004,7 +1004,7 @@ sub send_inventory {
 		$data = undef;
 		my $unpack;
 		if(exists $self->{recvPacketParser}{packet_lut}{inventory_items_stackable}) {
-			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{inventory_items_stackable});
+			$unpack = $packetParser->items_stackable($self->{recvPacketParser}{packet_lut}{inventory_items_stackable});
 			foreach my $item (@stackable) {
 				$data .= $self->{recvPacketParser}->reconstruct({
 					switch => $self->{recvPacketParser}{packet_lut}{inventory_items_stackable},
@@ -1031,7 +1031,7 @@ sub send_inventory {
 		$data = undef;
 		$unpack = undef;
 		if(exists $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable}) {
-			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable});
+			$unpack = $packetParser->items_nonstackable($self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable});
 			foreach my $item (@nonstackable) {
 				$data .= $self->{recvPacketParser}->reconstruct({
 					switch => $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable},
