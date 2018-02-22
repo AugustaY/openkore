@@ -843,7 +843,7 @@ sub send_player_info {
 						object_type => $player->{object_type},
 						ID => $player->{jobID},
 						charID  => $player->{ID},
-						walk_speed  $player->{walk_speed} * 1000,
+						walk_speed =>  $player->{walk_speed} * 1000,
 						opt1 => $player->{opt1},
 						opt2 => $player->{opt2},
 						option => $player->{option},
