@@ -932,7 +932,6 @@ sub send_inventory {
 			foreach my $item (@stackable) {
 				$data .= pack($unpack->{types},
 						map { $_ => $item->{$_} } qw($unpack->{keys}));
-				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{cart_items_stackable}) .
 					pack('v', length($data) + 4) . $data if (length($data) > 0);
@@ -961,7 +960,6 @@ sub send_inventory {
 			foreach my $item (@nonstackable) {
 				$data .= pack($unpack->{types},
 						map { $_ => $item->{$_} } qw($unpack->{keys}));
-				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable}) .
 					pack('v', length($data) + 4) . $data if (length($data) > 0);
@@ -1006,7 +1004,6 @@ sub send_inventory {
 			foreach my $item (@stackable) {
 				$data .= pack($unpack->{types},
 						map { $_ => $item->{$_} } qw($unpack->{keys}));
-				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{inventory_items_stackable}) .
 					pack('v', length($data) + 4) . $data if (length($data) > 0);
@@ -1032,7 +1029,6 @@ sub send_inventory {
 			foreach my $item (@nonstackable) {
 				$data .= pack($unpack->{types},
 						map { $_ => $item->{$_} } qw($unpack->{keys}));
-				});
 			}
 			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable}).
 					pack('v', length($data) + 4) . $data if (length($data) > 0);
