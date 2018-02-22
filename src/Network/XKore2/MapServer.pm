@@ -180,19 +180,19 @@ sub map_loaded {
 	$char->{ID} = $client->{session}{accountID};
 	$self->send_player_info($client, $char);
 	$self->send_avoid_sprite_error_hack($client, $char);
-	#$self->send_npc_info($client);
-	#$self->send_inventory($client, $char);
+	$self->send_npc_info($client);
+	$self->send_inventory($client, $char);
 	$self->send_ground_items($client);
-	#$self->send_portals($client);
-	#$self->send_npcs($client);
+	$self->send_portals($client);
+	$self->send_npcs($client);
 	$self->send_monsters($client);
-	#$self->send_pets($client);
+	$self->send_pets($client);
 	$self->send_vendors($client);
-	# $self->send_chatrooms($client);
+	$self->send_chatrooms($client);
 	# $self->send_ground_skills($client);
-	# $self->send_friends_list($client);
+	$self->send_friends_list($client);
 	# $self->send_party_list($client, $char);
-	# $self->send_pet($client);
+	$self->send_pet($client);
 	$self->send_welcome($client);
 	
 	$args->{mangle} = 2;
@@ -295,9 +295,10 @@ sub send_chatrooms {
 	my $data = undef;
 	foreach my $ID (@chatRoomsID) {
 		next if !defined($ID) || !$chatRooms{$ID} || !$chatRooms{$ID}{ownerID};
-		# '00D7' => ['chat_info', 'x2 a4 a4 v1 v1 C1 a*', [qw(ownerID ID limit num_users public title)]],
+
 		$data = $self->{recvPacketParser}->reconstruct({
 				switch => 'chat_info',
+				len => $chatRooms{len},
 				ownerID => $chatRooms{$ID}{ownerID},
 				ID => $ID,
 				limit => $chatRooms{$ID}{limit},
@@ -359,7 +360,7 @@ sub send_pets {
 			switch => 'actor_exists',
 			walk_speed => $pet->{walk_speed} * 1000,
 			coords => $coords,
-			map { $_ => $pet->{$_} } qw(object_type ID type hair_style lv)
+			map { $_ => $pet->{$_} } qw(len object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
 		});
 	}
 	$client->send($data) if (length($data) > 0);
@@ -377,7 +378,7 @@ sub send_monsters {
 			switch => 'actor_exists',
 			walk_speed => $monster->{walk_speed} * 1000,
 			coords => $coords,
-			map { $_ => $monster->{$_} } qw(object_type ID opt1 opt2 option type lv)
+			map { $_ => $monster->{$_} } qw(len object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
 		});
 		$client->send($data) if (length($data) > 0);
 	}
@@ -395,7 +396,7 @@ sub send_npcs {
 		$data = $self->{recvPacketParser}->reconstruct({
 			switch => 'actor_exists',
 			coords => $coords,
-			map { $_ => $npc->{$_} } qw(object_type ID opt1 opt2 option type)
+			map { $_ => $npc->{$_} } qw(len object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
 		});
 		$client->send($data) if (length($data) > 0);
 	}
@@ -415,7 +416,7 @@ sub send_portals {
 		$data .= $self->{recvPacketParser}->reconstruct({
 			switch => $switch,
 			coords => $coords,
-			map { $_ => $portal->{$_} } qw(object_type ID type)
+			map { $_ => $portal->{$_} } qw(len object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
 		});
 	}
 	$client->send($data) if (length($data) > 0);
@@ -537,7 +538,7 @@ sub send_player_info {
 	# More stats. packet 00B0
 	$data = undef;
 	my %stats_info = (
-		0 => $char->{walk_speed} * 1000,		# Walk speed
+		0 => $char->{walk_speed} * 900,		# Walk speed
 		5 => $char->{hp},						# Current HP
 		6 => $char->{hp_max},					# Max HP
 		7 => $char->{sp},						# Current SP
@@ -838,15 +839,15 @@ sub send_player_info {
 			shiftPack(\$coords, $player->{look}{body}, 4);
 			$data = $self->{recvPacketParser}->reconstruct({
 						switch => 'actor_exists',
-						len => 1,
-						object_type => 0,
+						len => $player->{len},
+						object_type => $player->{object_type},
 						ID => $player->{jobID},
 						charID  => $player->{ID},
 						walk_speed  $player->{walk_speed} * 1000,
 						opt1 => $player->{opt1},
 						opt2 => $player->{opt2},
 						option => $player->{option},
-						type => 1,
+						type => $player->{type},
 						hair_style => $player->{hair_style},
 						weapon => $player->{weapon},
 						shield => $player->{shield},
@@ -854,22 +855,22 @@ sub send_player_info {
 						tophead => $player->{headgear}{top},
 						midhead => $player->{headgear}{mid},
 						hair_color => $player->{hair_color},
-						clothes_color => 0,
+						clothes_color => 1,
 						head_dir => $player->{look}{head},
 						costume => 0,
 						guildID => $player->{guildID},
 						emblemID => $player->{emblemID},
-						manner => 0,
+						manner => 1,
 						opt3 => $player->{opt3},
-						stance => 0,
+						stance => 1,
 						sex => $player->{sex},
 						coords => $coords,
 						xSize => 1,
 						ySize => 1,
 						act => 1,
 						lv => 1,
-						font => 0,
-						opt4 => 0,
+						font => 1,
+						opt4 => 1,
 						name => $player->{name},
 					});
 			$client->send($data) if (length($data) > 0);
@@ -925,47 +926,68 @@ sub send_inventory {
 		
 		# Send stackable item information. packets 0123, 01EF, 02E9, 0902, 0993
 		$data = undef;
-		$n = 0;
-		foreach my $item (@stackable) {
-			$data .= pack('a2 v C2 v2 a8 l',
-				$item->{ID},
-				$item->{nameID},
-				$item->{type},
-				$item->{identified},  # identified
-				$item->{amount},
-				$item->{type_equip},
-				$item->{cards},
-				$item->{expire},
-			);
-			$n++;
-		}
-		$data = pack('C2 v', 0xE9, 0x02, length($data) + 4) . $data;
-		$client->send($data) if ($n > 0);
-		
+		my $unpack;
+		if(exists $self->{recvPacketParser}{packet_lut}{cart_items_stackable}) {
+			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{cart_items_stackable});
+			foreach my $item (@stackable) {
+				$data .= $self->{recvPacketParser}->reconstruct({
+					switch => $self->{recvPacketParser}{packet_lut}{cart_items_stackable},
+					map { $_ => $item->{$_} } qw($unpack->{types})
+				});
+			}
+			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{cart_items_stackable}) .
+					pack('v', length($data) + 4) . $data if (length($data) > 0);
+		} else {
+			foreach my $item (@stackable) {
+				$data .= pack('a2 v C2 v2 a8 l',
+					$item->{ID},
+					$item->{nameID},
+					$item->{type},
+					$item->{identified},  # identified
+					$item->{amount},
+					$item->{type_equip},
+					$item->{cards},
+					$item->{expire},
+				);
+			}
+			$data = pack('C2 v', 0xE9, 0x02, length($data) + 4) . $data if (length($data) > 0);
+		}		
+		$client->send($data) if (length($data) > 0);
+
 		# Send non-stackable item information
 		$data = undef;
-		$n = 0;
-		foreach my $item (@nonstackable) {
-			$data .= pack('a2 v C2 v2 C2 a8 l v2',
-				$item->{ID},
-				$item->{nameID},
-				$item->{type},
-				$item->{identified},  # identified
-				$item->{type_equip},
-				$item->{equipped},
-				$item->{broken},
-				$item->{upgrade},
-				$item->{cards},
-				$item->{expire},
-				$item->{bindOnEquipType},
-				$item->{sprite_id},
-			);
-			$n++;
+		$unpack = undef;
+		if(exists $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable}) {
+			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{cart_items_nonstackable});
+			foreach my $item (@nonstackable) {
+				$data .= $self->{recvPacketParser}->reconstruct({
+					switch => $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable},
+					map { $_ => $item->{$_} } qw($unpack->{types})
+				});
+			}
+			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{cart_items_nonstackable}) .
+					pack('v', length($data) + 4) . $data if (length($data) > 0);
+		} else {
+			foreach my $item (@nonstackable) {
+				$data .= pack('a2 v C2 v2 C2 a8 l v2',
+					$item->{ID},
+					$item->{nameID},
+					$item->{type},
+					$item->{identified},  # identified
+					$item->{type_equip},
+					$item->{equipped},
+					$item->{broken},
+					$item->{upgrade},
+					$item->{cards},
+					$item->{expire},
+					$item->{bindOnEquipType},
+					$item->{sprite_id},
+				);
+			}
+			$data = pack('C2 v', 0xE9, 0x02, length($data) + 4) . $data if (length($data) > 0);
 		}
-		$data = pack('C2 v', 0xD2, 0x02, length($data) + 4) . $data;
-		$client->send($data) if ($n > 0);
+		$client->send($data) if (length($data) > 0);
 	}
-
 	# Sort items into stackable and non-stackable
 	if (UNIVERSAL::isa($char, 'Actor::You')) {
 		my $data = undef;
@@ -978,31 +1000,59 @@ sub send_inventory {
 				push @nonstackable, $item;
 			}
 		}
-
-		# Send stackable item information
+		# Send stackable item information. packets 0123, 01EF, 02E9, 0902, 0993
 		$data = undef;
-		foreach my $item (@stackable) {
-			$data .= pack('a2 v C2 v1 x2',
-				$item->{ID},
-				$item->{nameID},
-				$item->{type},
-				1,  # identified
-				$item->{amount}
-			);
-		}
-		$data = pack('C2 v', 0xA3, 0x00, length($data) + 4) . $data;
-		$client->send($data);
+		my $unpack;
+		if(exists $self->{recvPacketParser}{packet_lut}{inventory_items_stackable}) {
+			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{inventory_items_stackable});
+			foreach my $item (@stackable) {
+				$data .= $self->{recvPacketParser}->reconstruct({
+					switch => $self->{recvPacketParser}{packet_lut}{inventory_items_stackable},
+					map { $_ => $item->{$_} } qw($unpack->{types})
+				});
+			}
+			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{inventory_items_stackable}) .
+					pack('v', length($data) + 4) . $data if (length($data) > 0);
+		} else {
+			foreach my $item (@stackable) {
+				$data .= pack('a2 v C2 v1 x2',
+					$item->{ID},
+					$item->{nameID},
+					$item->{type},
+					1,  # identified
+					$item->{amount}
+				);
+			}
+			$data = pack('C2 v', 0xE9, 0x02, length($data) + 4) . $data if (length($data) > 0);
+		}		
+		$client->send($data) if (length($data) > 0);
 
-		# Send non-stackable item (mostly equipment) information
+		# Send non-stackable item information
 		$data = undef;
-		foreach my $item (@nonstackable) {
-			$data .= pack('a2 v C2 v2 C2 a8',
-				$item->{ID}, $item->{nameID}, $item->{type},
-				$item->{identified}, $item->{type_equip}, $item->{equipped}, $item->{broken},
-				$item->{upgrade}, $item->{cards});
+		$unpack = undef;
+		if(exists $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable}) {
+			$unpack = $messageSender->items_stackable($self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable});
+			foreach my $item (@nonstackable) {
+				$data .= $self->{recvPacketParser}->reconstruct({
+					switch => $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable},
+					map { $_ => $item->{$_} } qw($unpack->{types})
+				});
+			}
+			$data = pack('v', hex $self->{recvPacketParser}{packet_lut}{inventory_items_nonstackable}).
+					pack('v', length($data) + 4) . $data if (length($data) > 0);
+		} else {
+			foreach my $item (@nonstackable) {
+				foreach my $item (@nonstackable) {
+					$data .= pack('a2 v C2 v2 C2 a8',
+						$item->{ID}, $item->{nameID}, $item->{type},
+						$item->{identified}, $item->{type_equip}, $item->{equipped}, $item->{broken},
+						$item->{upgrade}, $item->{cards});
+				}		
+			}
+			$data = pack('C2 v', 0xE9, 0x02, length($data) + 4) . $data if (length($data) > 0);
+			
 		}
-		$data = pack('C2 v', 0xA4, 0x00, length($data) + 4) . $data;
-		$client->send($data);
+		$client->send($data) if (length($data) > 0);
 	}
 	
 	# Send equipped arrow information
@@ -1022,7 +1072,7 @@ sub send_npc_info {
 		$data = $self->{recvPacketParser}->reconstruct({
 			switch => $switch,
 			coords => $coords,
-			map { $_ => $npc->{$_} } qw(object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
+			map { $_ => $npc->{$_} } qw(len object_type ID charID walk_speed opt1 opt2 option type hair_style weapon shield lowhead tophead midhead hair_color clothes_color head_dir costume guildID emblemID manner opt3 stance sex coords xSize ySize act lv font opt4 name)
 		});
 		$client->send($data) if (length($data) > 0);
 	}
