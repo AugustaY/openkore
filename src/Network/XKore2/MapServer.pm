@@ -298,7 +298,7 @@ sub send_chatrooms {
 
 		$data = $self->{recvPacketParser}->reconstruct({
 				switch => 'chat_info',
-				len => $chatRooms{len},
+				len => $chatRooms{$ID}{len},
 				ownerID => $chatRooms{$ID}{ownerID},
 				ID => $ID,
 				limit => $chatRooms{$ID}{limit},
