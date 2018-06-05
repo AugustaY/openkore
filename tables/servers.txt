@@ -566,3 +566,24 @@ charBlockSize 147
 addTableFolders kRO/RagexeRE_2014_10_22b;translated;translated/kRO_english;kRO
 clientHash 82d12c914f5ad48fd96fcf7ef4cc492d
 pinCode 1
+
+[NovaRO]
+ip 158.69.123.38
+port 6954
+master_version 1
+version 57
+serverType kRO_RagexeRE_2017_01_25a
+secureLogin 0
+secureLogin_type 0
+secureLogin_requestCode
+secureLogin_account 0
+serverEncoding Western
+gameGuard 0
+storageEncryptKey 0x050B6F79, 0x0202C179, 0x0E20120, 0x04FA43E3, 0x0179B6C8, 0x05973DF2, 0x07D8D6B, 0x08CB9ED9
+addTableFolders iRO;translated;NovaRO
+charBlockSize 147
+pinCode 0
+charDeleteDateType 1
+private 1
+sendCryptKeys 0x066E04FE,0x3004224A,0x04FF0458
+#clientHash d0856da93be366563c23b5be25ae738a

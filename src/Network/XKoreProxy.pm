@@ -233,11 +233,6 @@ sub clientRecv {
 	return undef unless ($self->proxyAlive && dataWaiting(\$self->{proxy}));
 
 	$self->{proxy}->recv($msg, 1024 * 32);
-	if (length($msg) == 0) {
-		# Connection from client closed
-		close($self->{proxy});
-		return undef;
-	}
 
 	if($self->getState() eq Network::IN_GAME || $self->getState() eq Network::CONNECTED_TO_CHAR_SERVER) {
 		$self->onClientData($msg);

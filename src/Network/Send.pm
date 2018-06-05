@@ -338,28 +338,29 @@ sub sendMasterLogin {
 	my ($self, $username, $password, $master_version, $version) = @_;
 	my $msg;
 
-	if (
-		$masterServer->{masterLogin_packet} eq ''
-		# TODO a way to select any packet, handled globally, something like "packet_<handler> <switch>"?
-		or $self->{packet_list}{$masterServer->{masterLogin_packet}}
-		&& $self->{packet_list}{$masterServer->{masterLogin_packet}}[0] eq 'master_login'
-		&& ($self->{packet_lut}{master_login} = $masterServer->{masterLogin_packet})
-	) {
-		$self->sendClientMD5Hash() unless $masterServer->{clientHash} eq ''; # this is a hack, just for testing purposes, it should be moved to the login algo later on
+	# if (
+		# $masterServer->{masterLogin_packet} eq ''
+		# # TODO a way to select any packet, handled globally, something like "packet_<handler> <switch>"?
+		# or $self->{packet_list}{$masterServer->{masterLogin_packet}}
+		# && $self->{packet_list}{$masterServer->{masterLogin_packet}}[0] eq 'master_login'
+		# && ($self->{packet_lut}{master_login} = $masterServer->{masterLogin_packet})
+	# ) {
+		# $self->sendClientMD5Hash() unless $masterServer->{clientHash} eq ''; # this is a hack, just for testing purposes, it should be moved to the login algo later on
 		
-		$msg = $self->reconstruct({
-			switch => 'master_login',
-			version => $version || $self->version,
-			master_version => $master_version,
-			username => $username,
-			password => $password,
-		});
-	} else {
+		# $msg = $self->reconstruct({
+			# switch => 'master_login',
+			# version => $version || $self->version,
+			# master_version => $master_version,
+			# username => $username,
+			# password => $password,
+		# });
+	# } else {
 		$msg = pack("v1 V", hex($masterServer->{masterLogin_packet}) || 0x64, $version || $self->version) .
 			pack("a24", $username) .
 			pack("a24", $password) .
-			pack("C*", $master_version);
-	}
+			pack("C*", $master_version) .
+			pack("C*", 0x69, 0x81, 0xe1, 0xa5, 0xf9, 0xba, 0xc3, 0xf5, 0x63, 0xd8, 0x20, 0xb5, 0xbb, 0x88, 0xcb, 0x4a, 0xe1, 0x2d, 0x76, 0x2e, 0xd7, 0x53, 0x99, 0x0b, 0xbc, 0x7e, 0xbc, 0x97, 0xfc, 0x0d, 0x7e, 0x04, 0x00, 0x00) ;
+	# }
 
 	$self->sendToServer($msg);
 	debug "Sent sendMasterLogin\n", "sendPacket", 2;

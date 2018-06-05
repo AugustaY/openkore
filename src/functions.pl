@@ -340,6 +340,10 @@ sub initNetworking {
 			# Proxy Ragnarok client connection
 			require Network::XKoreProxy;
 			$net = new Network::XKoreProxy;
+		} elsif ($XKore_version eq "4") {
+			# Proxy Ragnarok client connection
+			require Network::XKore4;
+			$net = new Network::XKore4;
 		} else {
 			# Run as a standalone bot, with no interface to the official RO client
 			require Network::DirectConnection;
@@ -738,7 +742,7 @@ sub mainLoop_initialized {
 		$net->clientSend($_) for $packetParser->process(
 			$incomingMessages, $packetParser
 		);
-		$net->clientFlush() if (UNIVERSAL::isa($net, 'Network::XKoreProxy'));
+		$net->clientFlush() if (UNIVERSAL::isa($net, 'Network::XKoreProxy') || UNIVERSAL::isa($net, 'Network::XKore4'));
 		Benchmark::end("parseMsg") if DEBUG;
 	}
 
